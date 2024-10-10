@@ -1,9 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit"
 import { appActions } from "app/appSlice"
 import { clearTasksAndTodolists } from "common/actions"
-import { ResultCode } from "common/enums"
+import { ResultCode, TaskStatuses } from "common/enums"
 import { createAppAsyncThunk, handleServerAppError, thunkTryCatch } from "common/utils"
-import { todolistsThunks } from "./todolistsSlice"
+import { FilterValuesType, todolistsThunks } from "./todolistsSlice"
 import { tasksApi } from "../api/tasksApi"
 import {
   AddTaskArgType,
@@ -55,6 +55,17 @@ const slice = createSlice({
   },
   selectors: {
     selectTasks: (state) => state,
+    selectFilteredTasks: (state, todolistId: string, filter: FilterValuesType) => {
+      let tasksForTodolist = state[todolistId]
+
+      if (filter === "active") {
+        tasksForTodolist = tasksForTodolist.filter((t) => t.status === TaskStatuses.New)
+      }
+      if (filter === "completed") {
+        tasksForTodolist = tasksForTodolist.filter((t) => t.status === TaskStatuses.Completed)
+      }
+      return tasksForTodolist
+    },
   },
 })
 
@@ -77,8 +88,8 @@ const addTask = createAppAsyncThunk<{ task: TaskType }, AddTaskArgType>(`${slice
       const task = res.data.data.item
       return { task }
     } else {
-      handleServerAppError(res.data, dispatch)
-      return rejectWithValue(null)
+      handleServerAppError(res.data, dispatch, false)
+      return rejectWithValue(res.data)
     }
   })
 })
@@ -134,7 +145,7 @@ const removeTask = createAppAsyncThunk<RemoveTaskArgType, RemoveTaskArgType>(
 
 export const tasksReducer = slice.reducer
 export const tasksThunks = { fetchTasks, addTask, updateTask, removeTask }
-export const { selectTasks } = slice.selectors
+export const { selectTasks, selectFilteredTasks } = slice.selectors
 export const tasksPath = slice.reducerPath
 
 export type TasksStateType = {
